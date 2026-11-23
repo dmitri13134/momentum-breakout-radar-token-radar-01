@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Momentum Radar — token launch radar</title>
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+<header class="top">
+  <div class="brand">
+    <div class="pulse" aria-hidden="true"><span></span><span></span><span></span></div>
+    <div>
+      <h1>Momentum Radar</h1>
+      <p class="sub">Token launch radar — ranks pre-token protocols by the value their momentum implies.</p>
+    </div>
+  </div>
+  <div class="meta" id="meta"></div>
+</header>
+
+<section class="strip" id="classStrip" aria-label="Momentum classes"></section>
+
+<section class="panel controls" aria-label="Filters">
+  <div class="row">
+    <label class="grow">Search
+      <input id="q" type="search" placeholder="Protocol name or slug…" autocomplete="off">
+    </label>
+    <label>Chain
+      <select id="chain"><option value="">All chains</option></select>
+    </label>
+    <label>Category
+      <select id="category"><option value="">All categories</option></select>
+    </label>
+    <label>Min TVL
+      <select id="minTvl">
+        <option value="0">Any TVL</option>
+        <option value="50000000">$50M+</option>
+        <option value="100000000">$100M+</option>
+        <option value="500000000">$500M+</option>
+        <option value="1000000000">$1B+</option>
+      </select>
+    </label>
+    <label>Sort
+      <select id="sort">
+        <option value="implied">Implied value</option>
+        <option value="growth">7-day change</option>
+        <option value="tvl">TVL</option>
+        <option value="age">Age (longest listed)</option>
+        <option value="name">Name A–Z</option>
+      </select>
+    </label>
+  </div>
+  <div class="row chips" id="classChips" role="group" aria-label="Momentum class filter"></div>
+  <div class="row toggles">
+    <label class="check"><input type="checkbox" id="watchOnly"> Watchlist only</label>
+    <label class="check"><input type="checkbox" id="hotOnly"> Hot only (Breakout + Heating)</label>
+    <span class="count" id="count"></span>
+  </div>
+</section>
+
+<section class="panel sandbox" aria-label="Model sandbox">
+  <div class="sandbox-head">
+    <h2>Model sandbox</h2>
+    <span class="badge" id="sandboxBadge">defaults</span>
+    <button id="sandboxReset" type="button">Reset</button>
+  </div>
+  <p class="hint">Move a slider and the board re-ranks live. The formula never changes, only its constants.</p>
+  <div class="sliders">
+    <label>Growth weight <output id="outGrowth">1.50</output>
+      <input id="inGrowth" type="range" min="0" max="3" step="0.1" value="1.5">
+    </label>
+    <label>Base multiple <output id="outBase">0.10</output>
+      <input id="inBase" type="range" min="0.02" max="0.3" step="0.01" value="0.1">
+    </label>
+    <label>Breakout bonus <output id="outBonus">1.35</output>
+      <input id="inBonus" type="range" min="1" max="1.6" step="0.05" value="1.35">
+    </label>
+  </div>
+</section>
+
+<main>
+  <section class="panel" aria-label="Ranked board">
+    <div class="board-head">
+      <h2>Ranked board</h2>
+      <span class="note">Implied value = TVL × base × growth × runway × breakout bonus. Click a row for its detail.</span>
+    </div>
+    <table id="board">
+      <thead>
+        <tr><th>#</th><th>Protocol</th><th>Momentum</th><th>TVL</th><th>7d</th><th>Age</th><th>Implied value</th></tr>
+      </thead>
+      <tbody id="boardBody"></tbody>
+    </table>
+    <p class="empty" id="boardEmpty" hidden>No protocol matches these filters.</p>
+  </section>
+
+  <section class="panel detail" id="detail" aria-label="Protocol detail" hidden>
+    <div class="detail-head">
+      <h2 id="detailTitle"></h2>
+      <button id="detailClose" type="button">Close</button>
+    </div>
+    <div id="detailBody"></div>
+  </section>
+
+  <section class="panel" aria-label="Live tokens">
+    <h2>Live tokens — already trading</h2>
+    <p class="note">These protocols record a token, so the board shows the market's own value for them, never a model's. They are kept apart from the ranked board.</p>
+    <table id="live">
+      <thead><tr><th>Protocol</th><th>TVL</th><th>Market cap</th><th>7d</th></tr></thead>
+      <tbody id="liveBody"></tbody>
+    </table>
+  </section>
+
+  <section class="panel method" aria-label="How the model works">
+    <h2>How the model works</h2>
+    <p>Every row is scored by one function, from the snapshot's own figures only — no name is ever special-cased:</p>
+    <p class="formula">implied = TVL × 0.10 × max(0.15, 1 + clamp(7d %, −80, +300) / 100 × 1.5) × (0.7 + min(age, 1460) / 1460 × 0.9) × bonus</p>
+    <p>Bonus is 1.35 for a breakout (7d ≥ +25%), 1.15 while heating (≥ +5%), 1.00 while steady, 0.85 while cooling (&lt; −5%) and 0.70 while fading (&lt; −25%). Age is days since DefiLlama began tracking the protocol; unknown age counts as 365 days. The board covers the whole 40-protocol watchlist plus every rankable pre-token protocol below the $50M floor — the early set where the breakouts live. The watchlist's own median 7-day change is <span id="watchMedian"></span>: the floor is cooling while the early set moves.</p>
+    <p class="fine">A protocol is listed as pre-token when its record carries no token (no market cap, no CoinGecko id, no symbol). That is what the record says, never proof it has none. Implied value is this radar's own claim about what a token would be worth if the protocol's record stayed as it is; it does not predict whether or when a token is issued. Data: DefiLlama protocols, snapshot <span id="asOf"></span>.</p>
+  </section>
+</main>
+
+<footer>
+  <p>Momentum Radar · model momentum-6 · built for the make.fun token launch radar bounty.</p>
+</footer>
+
+<script src="../data.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
